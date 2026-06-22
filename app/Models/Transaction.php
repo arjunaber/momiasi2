@@ -48,7 +48,7 @@ class Transaction extends Model
         'profit_margin'     => 'decimal:2',
     ];
 
-    // ✅ ADD THIS ACCESSOR - Get formatted date
+    //   ADD THIS ACCESSOR - Get formatted date
     public function getFormattedDateAttribute()
     {
         if (empty($this->transaction_date)) {
@@ -64,7 +64,7 @@ class Transaction extends Model
         }
     }
 
-    // ✅ ADD THIS ACCESSOR - Get date in different format (for inputs)
+    //   ADD THIS ACCESSOR - Get date in different format (for inputs)
     public function getDateForInputAttribute()
     {
         if (empty($this->transaction_date)) {

@@ -1,25 +1,55 @@
 @extends('layouts.app')
-@section('title', 'Import CSV')
+@section('title', 'Import CSV Transaksi')
 @section('page-title', 'Import CSV Transaksi')
 @section('page-subtitle', 'Upload data transaksi massal dari file CSV')
 
 @section('topbar-actions')
-    <a href="{{ route('transactions.template') }}" class="btn-primary-momi"><i class="bi bi-download me-1"></i>Download
-        Template</a>
-    <a href="{{ route('transactions.index') }}" class="btn-ghost-momi"><i class="bi bi-arrow-left me-1"></i>Kembali</a>
+    <div class="d-flex gap-2">
+        <a href="{{ route('transactions.download-template') }}" class="btn-primary-momi">
+            <i class="bi bi-download me-1"></i>Download Template CSV
+        </a>
+        <a href="{{ route('transactions.index') }}" class="btn-ghost-momi">
+            <i class="bi bi-arrow-left me-1"></i>Kembali
+        </a>
+    </div>
 @endsection
 
 @section('content')
-    <div class="row g-4 mb-4">
+    {{-- ALERT --}}
+    @if (session('success'))
+        <div class="alert alert-success"
+            style="background:rgba(22,163,74,0.08);border:1px solid rgba(22,163,74,0.2);border-radius:10px;padding:14px 18px;margin-bottom:20px;">
+            <div style="font-weight:600;color:var(--green);">{{ session('success') }}</div>
+            @if (session('duplicates') && session('duplicates') > 0)
+                <div style="font-size:13px;color:#d97706;margin-top:4px;">
+                    ⚠ {{ session('duplicates') }} baris duplikat dilewati (tidak diimport)
+                </div>
+            @endif
+        </div>
+    @endif
+
+    @if (session('error'))
+        <div class="alert alert-danger"
+            style="background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.2);border-radius:10px;padding:14px 18px;margin-bottom:20px;">
+            <i class="bi bi-x-circle-fill me-2" style="color:var(--red);"></i>
+            {{ session('error') }}
+        </div>
+    @endif
+
+    <div class="row">
+        {{-- KOLOM KIRI: UPLOAD --}}
         <div class="col-lg-7">
-            <div class="card-light h-100">
+            <div class="card-light">
                 <div class="card-header-light">
-                    <h3 class="card-title-light"><i class="bi bi-cloud-upload me-2"></i>Unggah File CSV</h3>
+                    <h3 class="card-title-light"><i class="bi bi-cloud-upload me-2"></i>Upload File CSV</h3>
+                    <span style="font-size:11px;color:#888;">Format .csv atau .txt · Maks 10MB</span>
                 </div>
                 <div class="card-body-light">
-                    <form method="POST" action="{{ route('transactions.import.post') }}" enctype="multipart/form-data"
+                    <form method="POST" action="{{ route('transactions.import.process') }}" enctype="multipart/form-data"
                         id="importForm">
                         @csrf
+
+                        {{-- Drop Zone --}}
                         <div id="dropZone" onclick="document.getElementById('csvFile').click()"
                             style="border:2px dashed #D0EEEE;border-radius:14px;padding:40px 24px;text-align:center;cursor:pointer;transition:all .2s;background:#FAFFFE;">
                             <input type="file" id="csvFile" name="csv_file" accept=".csv,.txt" style="display:none;"
@@ -42,67 +72,106 @@
                                 <div id="selName"
                                     style="font-size:14px;font-weight:600;color:var(--green);margin-bottom:3px;"></div>
                                 <div id="selSize" style="font-size:12px;color:#aaa;"></div>
+                                <div id="selRows" style="font-size:11px;color:#888;margin-top:4px;"></div>
                             </div>
                         </div>
+
                         @error('csv_file')
                             <div
                                 style="background:rgba(198,28,140,0.08);border:1px solid rgba(198,28,140,.2);color:var(--clr-magenta);border-radius:8px;padding:10px 12px;font-size:12px;margin-top:10px;">
                                 <i class="bi bi-exclamation-circle me-1"></i>{{ $message }}
                             </div>
                         @enderror
+
+                        {{-- Progress --}}
+                        <div id="importProgress" style="display:none;margin-top:14px;">
+                            <div
+                                style="display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:5px;">
+                                <span id="progressLabel">Memproses...</span>
+                                <span id="pctLabel">0%</span>
+                            </div>
+                            <div class="progress-light" style="height:8px;">
+                                <div id="progressBar"
+                                    style="width:0%;background:var(--clr-teal);transition:width .3s;height:8px;border-radius:4px;">
+                                </div>
+                            </div>
+                            <div id="progressDetail" style="font-size:11px;color:#888;margin-top:5px;text-align:center;">
+                            </div>
+                        </div>
+
                         <button type="submit" id="importBtn" class="btn-primary-momi w-100 mt-4"
                             style="padding:12px;justify-content:center;font-size:14px;" disabled>
                             <i class="bi bi-cloud-upload me-2"></i>Mulai Import
                         </button>
                     </form>
-                    <div id="importProgress" style="display:none;margin-top:14px;">
-                        <div
-                            style="display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:5px;">
-                            <span>Memproses...</span><span id="pctLabel">0%</span>
+
+                    {{-- Info Penting --}}
+                    <div
+                        style="margin-top:16px;padding:12px 16px;background:#F0FAFA;border-radius:8px;border:1px solid var(--border);font-size:12px;color:#888;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                            <i class="bi bi-info-circle" style="color:var(--clr-teal);"></i>
+                            <strong style="color:#555;">Info Penting:</strong>
                         </div>
-                        <div class="progress-light" style="height:8px;">
-                            <div id="progressBar" class="progress-bar"
-                                style="width:0%;background:var(--clr-teal);transition:width .3s;height:8px;border-radius:4px;">
-                            </div>
-                        </div>
+                        <ul style="margin:4px 0 0 20px;padding:0;">
+                            <li>Data yang sudah ada <strong>TIDAK</strong> akan diimport ulang (otomatis cegah duplikat)
+                            </li>
+                            <li>Format tanggal: <strong>YYYY-MM-DD</strong> (contoh: 2026-06-01)</li>
+                            <li>Pastikan SKU produk sudah terdaftar di database</li>
+                            <li>Marketplace tersedia: <strong>shopee, tiktok</strong></li>
+                        </ul>
                     </div>
                 </div>
             </div>
         </div>
 
+        {{-- KOLOM KANAN: PANDUAN SINGKAT --}}
         <div class="col-lg-5">
-            <div class="card-light h-100">
+            <div class="card-light">
                 <div class="card-header-light">
-                    <h3 class="card-title-light"><i class="bi bi-info-circle me-2"></i>Panduan Format CSV</h3>
+                    <h3 class="card-title-light"><i class="bi bi-info-circle me-2"></i>Format CSV</h3>
                 </div>
                 <div class="card-body-light" style="font-size:13px;">
-                    <p style="color:#888;margin-bottom:14px;">Baris pertama harus berisi header. Kolom wajib:</p>
-                    @foreach ([['transaction_date', 'Format: YYYY-MM-DD (cth: 2025-01-15)'], ['marketplace_slug', 'Nilai: shopee atau tiktok'], ['product_sku', 'SKU produk terdaftar (cth: MOM-001, LM-001)'], ['quantity', 'Jumlah unit terjual (angka ≥ 1)'], ['revenue', 'Total pendapatan (angka, tanpa titik/koma)']] as [$col, $desc])
-                        <div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);">
-                            <code
-                                style="background:var(--accent-soft);color:var(--clr-teal);padding:2px 8px;border-radius:4px;font-size:11px;white-space:nowrap;flex-shrink:0;">{{ $col }}</code>
-                            <span style="color:#666;font-size:12px;">{{ $desc }}</span>
-                        </div>
-                    @endforeach
+                    <p style="color:#888;margin-bottom:10px;">Baris pertama = header. Kolom wajib:</p>
 
-                    <div class="mt-3">
-                        <div
-                            style="font-size:10px;color:var(--clr-teal);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;font-weight:700;">
-                            SKU Produk Tersedia</div>
-                        <div style="display:flex;flex-wrap:wrap;gap:5px;">
-                            @foreach (\App\Models\Product::active()->orderBy('sku')->get() as $prod)
-                                <span title="{{ $prod->name }}"
-                                    style="background:#F0FAFA;color:var(--clr-teal);padding:3px 8px;border-radius:4px;font-size:11px;border:1px solid var(--border);font-family:monospace;cursor:help;">{{ $prod->sku }}</span>
-                            @endforeach
-                        </div>
+                    <div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);">
+                        <code
+                            style="background:var(--accent-soft);color:var(--clr-teal);padding:2px 8px;border-radius:4px;font-size:11px;white-space:nowrap;">transaction_date</code>
+                        <span style="color:#666;font-size:12px;">Format: YYYY-MM-DD</span>
+                    </div>
+                    <div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);">
+                        <code
+                            style="background:var(--accent-soft);color:var(--clr-teal);padding:2px 8px;border-radius:4px;font-size:11px;white-space:nowrap;">marketplace_slug</code>
+                        <span style="color:#666;font-size:12px;">shopee / tiktok</span>
+                    </div>
+                    <div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);">
+                        <code
+                            style="background:var(--accent-soft);color:var(--clr-teal);padding:2px 8px;border-radius:4px;font-size:11px;white-space:nowrap;">product_sku</code>
+                        <span style="color:#666;font-size:12px;">SKU produk (MOM-001, LM-001, dll)</span>
+                    </div>
+                    <div style="display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);">
+                        <code
+                            style="background:var(--accent-soft);color:var(--clr-teal);padding:2px 8px;border-radius:4px;font-size:11px;white-space:nowrap;">quantity</code>
+                        <span style="color:#666;font-size:12px;">Jumlah unit (angka ≥ 1)</span>
+                    </div>
+                    <div style="display:flex;gap:10px;padding:5px 0;">
+                        <code
+                            style="background:var(--accent-soft);color:var(--clr-teal);padding:2px 8px;border-radius:4px;font-size:11px;white-space:nowrap;">revenue</code>
+                        <span style="color:#666;font-size:12px;">Total pendapatan (angka)</span>
+                    </div>
+
+                    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+                        <a href="{{ route('transactions.download-template') }}" class="btn-ghost-momi"
+                            style="font-size:13px;padding:6px 16px;">
+                            <i class="bi bi-download me-1"></i>Download Template CSV
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Riwayat Import --}}
-    <div class="card-light">
+    {{-- RIWAYAT IMPORT --}}
+    <div class="card-light mt-4">
         <div class="card-header-light">
             <h3 class="card-title-light"><i class="bi bi-clock-history me-2"></i>Riwayat Import</h3>
             <span style="font-size:11px;color:#888;">{{ $imports->total() }} file</span>
@@ -113,69 +182,99 @@
                     <tr>
                         <th>Tanggal</th>
                         <th>File</th>
-                        <th>Oleh</th>
-                        <th class="text-center">Status</th>
+                        <th>Status</th>
                         <th class="text-center">Total</th>
                         <th class="text-center">Berhasil</th>
                         <th class="text-center">Gagal</th>
-                        <th>Ukuran</th>
+                        <th class="text-center">Duplikat</th>
                         <th class="text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($imports as $imp)
                         <tr>
-                            <td style="white-space:nowrap;">
-                                <div style="font-size:13px;font-weight:500;">{{ $imp->created_at->format('d M Y') }}</div>
-                                <div style="font-size:10px;color:#aaa;">{{ $imp->created_at->format('H:i') }}</div>
+                            <td style="white-space:nowrap;font-size:13px;">
+                                {{ $imp->created_at->format('d M Y H:i') }}
                             </td>
                             <td>
-                                <div style="font-size:12px;font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                                <div style="font-size:12px;font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
                                     title="{{ $imp->filename }}">
-                                    <i class="bi bi-file-earmark-spreadsheet me-1"
-                                        style="color:var(--green);"></i>{{ $imp->filename }}
+                                    <i class="bi bi-file-earmark-spreadsheet me-1" style="color:var(--green);"></i>
+                                    {{ $imp->filename }}
+                                </div>
+                                <div style="font-size:10px;color:#aaa;margin-top:2px;">
+                                    <span class="badge"
+                                        style="background:#F0FAFA;color:var(--clr-teal);padding:1px 8px;border-radius:10px;font-weight:400;font-size:10px;">
+                                        {{ $imp->import_type ?? 'simple' }}
+                                    </span>
+                                    @if ($imp->duplicate_rows > 0)
+                                        <span class="badge"
+                                            style="background:#FEF3C7;color:#d97706;padding:1px 8px;border-radius:10px;font-weight:400;font-size:10px;">
+                                            ⚠ duplikat
+                                        </span>
+                                    @endif
+                                    @if ($imp->failed_rows > 0)
+                                        <span class="badge"
+                                            style="background:#FEE2E2;color:#dc2626;padding:1px 8px;border-radius:10px;font-weight:400;font-size:10px;">
+                                             error
+                                        </span>
+                                    @endif
                                 </div>
                             </td>
                             <td>
-                                <div style="font-size:12px;">{{ $imp->user->name ?? '—' }}</div>
-                            </td>
-                            <td class="text-center">
-                                @php
-                                    $sm = [
-                                        'completed' => ['Selesai', 'badge-completed', 'bi-check-circle'],
-                                        'processing' => ['Diproses', 'badge-pending', 'bi-hourglass-split'],
-                                        'pending' => ['Menunggu', 'badge-pending', 'bi-clock'],
-                                        'failed' => ['Gagal', 'badge-cancelled', 'bi-x-circle'],
-                                    ];
-                                    [$sl, $sc, $si] = $sm[$imp->status] ?? ['—', '', 'bi-circle'];
-                                @endphp
-                                <span class="{{ $sc }}"
+                                <span class="{{ $imp->status_badge_class ?? 'badge-completed' }}"
                                     style="font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;">
-                                    <i class="bi {{ $si }} me-1"></i>{{ $sl }}
+                                    <i class="bi {{ $imp->status_icon ?? 'bi-check-circle' }} me-1"></i>
+                                    {{ $imp->status_label ?? 'Selesai' }}
                                 </span>
                             </td>
                             <td class="text-center" style="font-weight:600;">{{ number_format($imp->total_rows) }}</td>
                             <td class="text-center" style="color:var(--green);font-weight:700;">
-                                {{ number_format($imp->success_rows) }}</td>
+                                {{ number_format($imp->success_rows) }}
+                                @if ($imp->total_rows > 0)
+                                    <span
+                                        style="font-size:9px;color:#888;display:block;">{{ $imp->success_rate ?? 0 }}%</span>
+                                @endif
+                            </td>
                             <td class="text-center">
                                 @if ($imp->failed_rows > 0)
-                                    <span style="color:var(--red);font-weight:700;">{{ $imp->failed_rows }}</span>
+                                    <span style="color:var(--red);font-weight:700;cursor:pointer;"
+                                        onclick="showFailedRows('{{ $imp->id }}')"
+                                        title="Klik untuk lihat detail error">
+                                        {{ $imp->failed_rows }}
+                                        <i class="bi bi-info-circle" style="font-size:11px;color:#888;"></i>
+                                    </span>
                                 @else
                                     <span style="color:#ccc;">—</span>
                                 @endif
                             </td>
-                            <td style="font-size:12px;color:#888;">{{ $imp->file_size_formatted }}</td>
+                            <td class="text-center">
+                                @if ($imp->duplicate_rows > 0)
+                                    <span style="color:#d97706;font-weight:600;cursor:pointer;"
+                                        onclick="showDuplicateRows('{{ $imp->id }}')"
+                                        title="Klik untuk lihat detail duplikat">
+                                        {{ $imp->duplicate_rows }}
+                                        <i class="bi bi-info-circle" style="font-size:11px;color:#888;"></i>
+                                    </span>
+                                @else
+                                    <span style="color:#ccc;">—</span>
+                                @endif
+                            </td>
                             <td class="text-center">
                                 <div class="d-flex gap-2 justify-content-center">
-                                    @if ($imp->failed_rows > 0 && $imp->error_log)
-                                        <button type="button" class="btn-edit-soft btn-view-error"
-                                            data-log="{{ $imp->error_log }}" title="Lihat Error">
-                                            <i class="bi bi-exclamation-triangle"></i>
-                                        </button>
+                                    @if ($imp->failed_rows > 0 || $imp->duplicate_rows > 0)
+                                        <a href="{{ route('transactions.import.detail', $imp->id) }}"
+                                            class="btn-edit-soft" title="Lihat Detail Import">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    @else
+                                        <span style="color:#ccc;font-size:11px;">—</span>
                                     @endif
+
+                                    {{-- Tombol Delete --}}
                                     <button type="button" class="btn-danger-soft btn-delete-import"
                                         data-id="{{ $imp->id }}" data-filename="{{ $imp->filename }}"
-                                        data-count="{{ $imp->success_rows }}" title="Hapus file & transaksi terkait">
+                                        data-count="{{ $imp->success_rows }}" title="Hapus">
                                         <i class="bi bi-trash3"></i>
                                     </button>
                                 </div>
@@ -183,7 +282,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center py-5" style="color:#aaa;">
+                            <td colspan="8" class="text-center py-5" style="color:#aaa;">
                                 <i class="bi bi-inbox"
                                     style="font-size:30px;display:block;margin-bottom:8px;color:var(--clr-mint);"></i>
                                 Belum ada riwayat import.
@@ -204,18 +303,64 @@
         @endif
     </div>
 
+    {{-- MODAL DETAIL FAILED ROWS --}}
+    <div id="failedModal"
+        style="display:none;position:fixed;inset:0;z-index:1050;align-items:center;justify-content:center;">
+        <div class="modal-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);"
+            onclick="closeModal('failedModal')"></div>
+        <div
+            style="position:relative;background:white;border-radius:16px;width:min(700px,95vw);max-height:80vh;overflow:hidden;z-index:1;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+            <div
+                style="padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:white;">
+                <div>
+                    <h4 style="font-size:16px;font-weight:700;color:var(--red);margin:0;">
+                        <i class="bi bi-x-circle me-2"></i>Data Gagal
+                    </h4>
+                    <span id="failedCount" style="font-size:12px;color:#888;"></span>
+                </div>
+                <button onclick="closeModal('failedModal')"
+                    style="background:none;border:none;font-size:20px;color:#888;cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding:16px 22px;overflow-y:auto;max-height:60vh;">
+                <div id="failedList" style="font-size:13px;font-family:monospace;white-space:pre-wrap;"></div>
+            </div>
+            <div
+                style="padding:12px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;background:white;">
+                <button onclick="closeModal('failedModal')" class="btn-ghost-momi">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- MODAL DETAIL DUPLICATE ROWS --}}
+    <div id="duplicateModal"
+        style="display:none;position:fixed;inset:0;z-index:1050;align-items:center;justify-content:center;">
+        <div class="modal-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(3px);"
+            onclick="closeModal('duplicateModal')"></div>
+        <div
+            style="position:relative;background:white;border-radius:16px;width:min(700px,95vw);max-height:80vh;overflow:hidden;z-index:1;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+            <div
+                style="padding:16px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:white;">
+                <div>
+                    <h4 style="font-size:16px;font-weight:700;color:#d97706;margin:0;">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Data Duplikat
+                    </h4>
+                    <span id="duplicateCount" style="font-size:12px;color:#888;"></span>
+                </div>
+                <button onclick="closeModal('duplicateModal')"
+                    style="background:none;border:none;font-size:20px;color:#888;cursor:pointer;">&times;</button>
+            </div>
+            <div style="padding:16px 22px;overflow-y:auto;max-height:60vh;">
+                <div id="duplicateList" style="font-size:13px;font-family:monospace;white-space:pre-wrap;"></div>
+            </div>
+            <div
+                style="padding:12px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;background:white;">
+                <button onclick="closeModal('duplicateModal')" class="btn-ghost-momi">Tutup</button>
+            </div>
+        </div>
+    </div>
+
     <form id="deleteImportForm" method="POST" style="display:none;">@csrf @method('DELETE')</form>
 @endsection
-
-@push('styles')
-    <style>
-        #dropZone:hover,
-        #dropZone.dragover {
-            border-color: var(--clr-teal);
-            background: rgba(0, 139, 139, 0.04);
-        }
-    </style>
-@endpush
 
 @push('scripts')
     <script>
@@ -225,16 +370,39 @@
 
         function handleFile(file) {
             if (!file) return;
-            if (!file.name.endsWith('.csv') && !file.name.endsWith('.txt')) {
+
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (!['csv', 'txt'].includes(ext)) {
                 SwalMomi.fire({
                     icon: 'error',
                     title: 'Format Salah',
                     text: 'Hanya file .csv atau .txt yang diterima.'
                 });
+                fileInput.value = '';
                 return;
             }
+
+            if (file.size > 10 * 1024 * 1024) {
+                SwalMomi.fire({
+                    icon: 'error',
+                    title: 'File Terlalu Besar',
+                    text: 'Maksimal ukuran file adalah 10 MB.'
+                });
+                fileInput.value = '';
+                return;
+            }
+
             document.getElementById('selName').textContent = file.name;
             document.getElementById('selSize').textContent = (file.size / 1048576).toFixed(2) + ' MB';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const lines = e.target.result.split('\n').filter(line => line.trim() !== '');
+                const rowCount = Math.max(0, lines.length - 1);
+                document.getElementById('selRows').textContent = '~ ' + rowCount.toLocaleString() + ' baris data';
+            };
+            reader.readAsText(file);
+
             document.getElementById('dropDefault').style.display = 'none';
             document.getElementById('dropSelected').style.display = 'block';
             dropZone.style.borderColor = 'var(--green)';
@@ -242,6 +410,7 @@
         }
 
         fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+
         dropZone.addEventListener('dragover', e => {
             e.preventDefault();
             dropZone.classList.add('dragover');
@@ -259,32 +428,34 @@
             }
         });
 
-        document.getElementById('importForm').addEventListener('submit', function() {
+        document.getElementById('importForm').addEventListener('submit', function(e) {
+            if (!fileInput.files || !fileInput.files[0]) {
+                e.preventDefault();
+                SwalMomi.fire({
+                    icon: 'warning',
+                    title: 'Pilih File',
+                    text: 'Silakan pilih file CSV terlebih dahulu.'
+                });
+                return;
+            }
+
             importBtn.disabled = true;
-            importBtn.innerHTML =
-                '<span style="display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;"></span>Memproses...';
+            importBtn.innerHTML = `
+            <span style="display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;"></span>
+            Memproses...
+        `;
+
             const prog = document.getElementById('importProgress');
             const bar = document.getElementById('progressBar');
             const pct = document.getElementById('pctLabel');
             prog.style.display = 'block';
             let p = 0;
             const t = setInterval(() => {
-                p = Math.min(p + Math.random() * 8, 90);
+                p = Math.min(p + Math.random() * 6, 90);
                 bar.style.width = p + '%';
                 pct.textContent = Math.round(p) + '%';
             }, 300);
             window.addEventListener('beforeunload', () => clearInterval(t));
-        });
-
-        document.querySelectorAll('.btn-view-error').forEach(btn => {
-            btn.addEventListener('click', function() {
-                SwalMomi.fire({
-                    icon: 'warning',
-                    title: 'Log Error Import',
-                    html: `<div style="text-align:left;background:#FFF8F8;border-radius:8px;padding:12px;font-size:12px;font-family:monospace;max-height:300px;overflow-y:auto;color:var(--red);line-height:1.8;">${this.dataset.log.replace(/\n/g,'<br>')}</div>`,
-                    width: 600,
-                });
-            });
         });
 
         document.querySelectorAll('.btn-delete-import').forEach(btn => {
@@ -296,27 +467,15 @@
                 } = this.dataset;
                 SwalMomi.fire({
                     icon: 'warning',
-                    title: 'Hapus File Import?',
+                    title: 'Hapus Import?',
                     html: `
-                <div style="text-align:left;">
-                    <p style="color:#666;margin-bottom:12px;">File dan semua transaksi terkait akan dihapus:</p>
-                    <div style="background:#F9FFFE;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;">
-                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                            <i class="bi bi-file-earmark-spreadsheet" style="color:var(--green);font-size:18px;"></i>
-                            <strong style="font-size:13px;">${filename}</strong>
-                        </div>
-                        <div style="font-size:12px;color:#888;">
-                            <i class="bi bi-trash3 me-1" style="color:var(--red);"></i>
-                            <strong style="color:var(--red);">${count} transaksi</strong> akan dihapus permanen
-                        </div>
-                    </div>
-                    <p style="font-size:12px;color:var(--red);margin:0;">⚠ Tindakan ini tidak dapat dibatalkan.</p>
-                </div>`,
+                    File <strong>${filename}</strong> dan ${count} transaksi akan dihapus.
+                    <br><small style="color:#888;">Tindakan ini tidak dapat dibatalkan.</small>
+                `,
                     showCancelButton: true,
-                    confirmButtonText: '<i class="bi bi-trash3 me-1"></i>Ya, Hapus Semua',
+                    confirmButtonText: 'Ya, Hapus',
                     cancelButtonText: 'Batal',
                     confirmButtonColor: '#dc2626',
-                    width: 480,
                 }).then(r => {
                     if (r.isConfirmed) {
                         const f = document.getElementById('deleteImportForm');
@@ -325,6 +484,93 @@
                     }
                 });
             });
+        });
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function showFailedRows(importId) {
+            // Ambil data dari server
+            fetch(`/transactions/import/${importId}/detail`)
+                .then(response => response.json())
+                .then(data => {
+                    const modal = document.getElementById('failedModal');
+                    const list = document.getElementById('failedList');
+                    const count = document.getElementById('failedCount');
+
+                    if (data.failed_rows && data.failed_rows.length > 0) {
+                        list.innerHTML = data.failed_rows.map(row =>
+                            `<div style="padding:6px 10px;border-bottom:1px solid #f0f0f0;color:#555;">
+                        <span style="color:var(--red);font-weight:600;">Baris ${row.row}:</span> 
+                        ${row.error}
+                    </div>`
+                        ).join('');
+                        count.textContent = `Total ${data.failed_rows.length} data gagal`;
+                    } else {
+                        list.innerHTML =
+                            '<div style="color:#888;text-align:center;padding:20px;">Tidak ada data gagal</div>';
+                        count.textContent = '';
+                    }
+
+                    modal.style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
+                })
+                .catch(() => {
+                    SwalMomi.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Gagal memuat detail import.'
+                    });
+                });
+        }
+
+        function showDuplicateRows(importId) {
+            fetch(`/transactions/import/${importId}/detail`)
+                .then(response => response.json())
+                .then(data => {
+                    const modal = document.getElementById('duplicateModal');
+                    const list = document.getElementById('duplicateList');
+                    const count = document.getElementById('duplicateCount');
+
+                    if (data.duplicate_rows && data.duplicate_rows.length > 0) {
+                        list.innerHTML = data.duplicate_rows.map(row =>
+                            `<div style="padding:6px 10px;border-bottom:1px solid #f0f0f0;color:#555;">
+                        <span style="color:#d97706;font-weight:600;">Baris ${row}:</span> 
+                        Data sudah ada (duplikat)
+                    </div>`
+                        ).join('');
+                        count.textContent = `Total ${data.duplicate_rows.length} data duplikat`;
+                    } else {
+                        list.innerHTML =
+                            '<div style="color:#888;text-align:center;padding:20px;">Tidak ada data duplikat</div>';
+                        count.textContent = '';
+                    }
+
+                    modal.style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
+                })
+                .catch(() => {
+                    SwalMomi.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Gagal memuat detail import.'
+                    });
+                });
+        }
+
+        // Tutup modal dengan ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+                    const modal = backdrop.closest('[id$="Modal"]');
+                    if (modal && modal.style.display === 'flex') {
+                        modal.style.display = 'none';
+                        document.body.style.overflow = '';
+                    }
+                });
+            }
         });
     </script>
 @endpush

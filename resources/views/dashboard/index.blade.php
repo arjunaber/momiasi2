@@ -56,23 +56,59 @@
 @endsection
 
 @php
-    $totalRevenue = (float) ($summary->total_revenue ?? 0);
-    $totalAdspend = (float) ($summary->total_adspend ?? 0);
-    $totalProfit = (float) ($summary->total_profit ?? 0);
-    $totalOrders = (int) ($summary->total_orders ?? 0);
-    $profitMargin = $totalRevenue > 0 ? round(($totalProfit / $totalRevenue) * 100, 1) : 0;
-    $roasVal = $totalAdspend > 0 ? round($totalRevenue / $totalAdspend, 2) : 0;
-    $avgOrderVal = $totalOrders > 0 ? round($totalRevenue / $totalOrders) : 0;
+    // ============================================================
+    // 🔥 METRIK UTAMA - SEMUA DARI CONTROLLER
+    // ============================================================
+
+    // 💰 REVENUE - DUA VERSI
+    $revenueAll = $totalRevenueAll ?? 0;
+    $revenueCompleted = $totalRevenueCompleted ?? 0;
+
+    // 💵 PROFIT - DUA VERSI
+    $profitAll = $totalProfitAll ?? 0;
+    $profitCompleted = $totalProfitCompleted ?? 0;
+
+    // 📦 ORDERS
+    $totalOrders = $totalOrdersAll ?? 0;
+    $ordersCompleted = $totalOrdersCompleted ?? 0;
+
+    // 📢 ADS
+    $totalAdspend = $totalAdspend ?? 0;
+
+    // 📊 METRIK TURUNAN
+    $profitMargin = $revenueCompleted > 0 ? round(($profitCompleted / $revenueCompleted) * 100, 1) : 0;
+
+    $roasVal = $totalAdspend > 0 ? round($revenueAll / $totalAdspend, 2) : 0;
+
+    $avgOrderVal = $totalOrders > 0 ? round($revenueAll / $totalOrders) : 0;
+
+    $adspendRatio = $revenueAll > 0 ? round(($totalAdspend / $revenueAll) * 100, 2) : 0;
+
+    $completionRate = $totalOrders > 0 ? round(($ordersCompleted / $totalOrders) * 100, 1) : 0;
+
+    // 🔥 GROWTH dari monthlyStats
     $sorted = $monthlyStats->sortBy('period_month')->values();
     $lastM = $sorted->last();
     $prevM = $sorted->count() >= 2 ? $sorted->get($sorted->count() - 2) : null;
+
     $revGrowth =
         $prevM && $prevM->total_revenue > 0
             ? round((($lastM->total_revenue - $prevM->total_revenue) / $prevM->total_revenue) * 100, 1)
             : null;
+
     $ordGrowth =
         $prevM && $prevM->total_orders > 0
             ? round((($lastM->total_orders - $prevM->total_orders) / $prevM->total_orders) * 100, 1)
+            : null;
+
+    $adspendGrowth =
+        $prevM && $prevM->total_adspend > 0
+            ? round((($lastM->total_adspend - $prevM->total_adspend) / $prevM->total_adspend) * 100, 1)
+            : null;
+
+    $profGrowth =
+        $prevM && $prevM->total_profit > 0
+            ? round((($lastM->total_profit - $prevM->total_profit) / $prevM->total_profit) * 100, 1)
             : null;
 @endphp
 
@@ -93,13 +129,19 @@
         </div>
     @endif
 
-    {{-- KPI Cards --}}
+    {{-- ================================================================ --}}
+    {{-- 🔥 KPI CARDS - DENGAN DUA VERSI REVENUE --}}
+    {{-- ================================================================ --}}
     <div class="row g-3 mb-4">
+        {{-- REVENUE COMPLETED (PENDAPATAN RIIL) --}}
         <div class="col-6 col-xl-3">
             <div class="stat-card teal">
                 <div class="stat-icon teal"><i class="bi bi-coin"></i></div>
-                <div class="stat-label">Total Revenue</div>
-                <div class="stat-value">Rp {{ number_format($totalRevenue / 1000000, 1, ',', '.') }}jt</div>
+                <div class="stat-label">Revenue (Selesai)</div>
+                <div class="stat-value">Rp {{ number_format($revenueCompleted / 1000000, 1, ',', '.') }}jt</div>
+                <div class="stat-sub mt-1" style="font-size:10px;color:#888;">
+                    Pendapatan riil dari order selesai
+                </div>
                 @if ($revGrowth !== null)
                     <div class="stat-sub d-flex align-items-center gap-2 mt-1">
                         <span class="{{ $revGrowth >= 0 ? 'badge-up' : 'badge-down' }}">
@@ -110,36 +152,226 @@
                 @endif
             </div>
         </div>
+
+        {{-- TOTAL REVENUE (GROSS) --}}
+        <div class="col-6 col-xl-3">
+            <div class="stat-card teal" style="opacity:0.75;border:1px dashed var(--border);">
+                <div class="stat-icon teal" style="background:rgba(0,139,139,0.1);"><i class="bi bi-cash-stack"></i></div>
+                <div class="stat-label">Revenue (Gross)</div>
+                <div class="stat-value" style="font-size:18px;">Rp
+                    {{ number_format($revenueAll / 1000000, 1, ',', '.') }}jt</div>
+                <div class="stat-sub mt-1" style="font-size:10px;color:#888;">
+                    📊 Termasuk batal, retur, pending
+                    <span style="display:block;font-size:9px;color:#aaa;">
+                        {{ $completionRate }}% completion rate
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        {{-- PROFIT --}}
         <div class="col-6 col-xl-3">
             <div class="stat-card green">
                 <div class="stat-icon green"><i class="bi bi-graph-up-arrow"></i></div>
-                <div class="stat-label">Total Profit</div>
+                <div class="stat-label">Profit Bersih</div>
                 <div class="stat-value" style="color:var(--green);">Rp
-                    {{ number_format($totalProfit / 1000000, 1, ',', '.') }}jt</div>
-                <div class="stat-sub mt-1">Margin: <strong style="color:var(--green);">{{ $profitMargin }}%</strong></div>
+                    {{ number_format($profitCompleted / 1000000, 1, ',', '.') }}jt</div>
+                <div class="stat-sub mt-1">
+                    Margin: <strong style="color:var(--green);">{{ $profitMargin }}%</strong>
+                    <span style="font-size:10px;color:#888;display:block;">
+                        dari revenue selesai
+                    </span>
+                </div>
+                @if ($profGrowth !== null)
+                    <div class="stat-sub d-flex align-items-center gap-2 mt-1">
+                        <span class="{{ $profGrowth >= 0 ? 'badge-up' : 'badge-down' }}">
+                            <i class="bi bi-arrow-{{ $profGrowth >= 0 ? 'up' : 'down' }}"></i>{{ abs($profGrowth) }}%
+                        </span>
+                        <span>vs bln lalu</span>
+                    </div>
+                @endif
             </div>
         </div>
-        <div class="col-6 col-xl-3">
-            <div class="stat-card magenta">
-                <div class="stat-icon magenta"><i class="bi bi-megaphone"></i></div>
-                <div class="stat-label">Total Ad Spend</div>
-                <div class="stat-value" style="color:var(--clr-magenta);">Rp
-                    {{ number_format($totalAdspend / 1000000, 1, ',', '.') }}jt</div>
-                <div class="stat-sub mt-1">ROAS: <strong style="color:var(--clr-teal);">{{ $roasVal }}×</strong></div>
-            </div>
-        </div>
+
+        {{-- ORDERS --}}
         <div class="col-6 col-xl-3">
             <div class="stat-card yellow">
                 <div class="stat-icon yellow"><i class="bi bi-bag-check"></i></div>
-                <div class="stat-label">Total Order</div>
+                <div class="stat-label">Total Orders</div>
                 <div class="stat-value" style="color:var(--yellow);">{{ number_format($totalOrders, 0, ',', '.') }}</div>
-                <div class="stat-sub mt-1">AOV: <strong style="color:var(--clr-teal);">Rp
-                        {{ number_format($avgOrderVal, 0, ',', '.') }}</strong></div>
+                <div class="stat-sub mt-1" style="font-size:10px;color:#888;">
+                    {{ number_format($ordersCompleted, 0, ',', '.') }} selesai ·
+                    {{ number_format($totalOrders - $ordersCompleted, 0, ',', '.') }} lainnya
+                    <span style="display:block;font-size:9px;color:#aaa;">
+                        AOV: Rp {{ number_format($avgOrderVal, 0, ',', '.') }}
+                    </span>
+                </div>
+                @if ($ordGrowth !== null)
+                    <div class="stat-sub d-flex align-items-center gap-2 mt-1">
+                        <span class="{{ $ordGrowth >= 0 ? 'badge-up' : 'badge-down' }}">
+                            <i class="bi bi-arrow-{{ $ordGrowth >= 0 ? 'up' : 'down' }}"></i>{{ abs($ordGrowth) }}%
+                        </span>
+                        <span>vs bln lalu</span>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
 
-    {{-- Tren Harian + Donut --}}
+    {{-- ================================================================ --}}
+    {{-- 🔥 ORDER STATUS BREAKDOWN --}}
+    {{-- ================================================================ --}}
+    @if ($totalOrders > 0)
+        <div class="row g-3 mb-4">
+            <div class="col-12">
+                <div class="card-light">
+                    <div class="card-header-light">
+                        <h3 class="card-title-light">
+                            <i class="bi bi-clipboard-data me-2" style="color:var(--clr-teal);"></i>
+                            Ringkasan Status Order
+                        </h3>
+                        <span style="font-size:11px;color:#888;">Total {{ number_format($totalOrders, 0, ',', '.') }}
+                            order</span>
+                    </div>
+                    <div class="card-body-light">
+                        <div class="row g-3">
+                            @foreach ($orderStatusData as $status)
+                                <div class="col-md-3 col-6">
+                                    <div
+                                        style="background:#FAFFFE;border:1px solid var(--border);border-radius:10px;padding:14px 16px;border-top:3px solid {{ $status->color }};height:100%;">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div>
+                                                <div style="font-size:11px;color:#888;font-weight:600;">
+                                                    {{ $status->label }}</div>
+                                                <div style="font-size:22px;font-weight:800;color:{{ $status->color }};">
+                                                    {{ number_format($status->count, 0, ',', '.') }}
+                                                </div>
+                                                <div style="font-size:11px;color:#666;margin-top:2px;">
+                                                    <span
+                                                        style="padding:2px 8px;border-radius:12px;font-size:10px;background:{{ $status->color }}22;color:{{ $status->color }};">
+                                                        {{ $status->percentage }}%
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div
+                                                style="width:40px;height:40px;border-radius:50%;background:{{ $status->color }}22;display:flex;align-items:center;justify-content:center;">
+                                                <i class="bi {{ $status->icon }}"
+                                                    style="color:{{ $status->color }};font-size:18px;"></i>
+                                            </div>
+                                        </div>
+                                        @if ($status->revenue > 0)
+                                            <div
+                                                style="font-size:10px;color:#888;margin-top:6px;border-top:1px solid var(--border);padding-top:6px;">
+                                                Revenue: Rp {{ number_format($status->revenue, 0, ',', '.') }}
+                                            </div>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- ================================================================ --}}
+    {{-- 🔥 SUMMARY ADS PER MARKETPLACE --}}
+    {{-- ================================================================ --}}
+    @if ($marketplaceSummary->count() >= 2)
+        <div class="row g-3 mb-4">
+            <div class="col-12">
+                <div class="card-light">
+                    <div class="card-header-light">
+                        <h3 class="card-title-light">
+                            <i class="bi bi-megaphone me-2" style="color:var(--clr-magenta);"></i>
+                            Ringkasan Iklan per Marketplace
+                        </h3>
+                        <span style="font-size:11px;color:#888;">Total biaya iklan & efisiensi per platform</span>
+                    </div>
+                    <div class="card-body-light">
+                        <div class="row g-3">
+                            @foreach ($marketplaceSummary as $mp)
+                                @php
+                                    $mpRoas =
+                                        $mp->total_adspend > 0 ? round($mp->total_revenue / $mp->total_adspend, 2) : 0;
+                                    $mpMargin =
+                                        $mp->total_revenue > 0
+                                            ? round(($mp->total_profit / $mp->total_revenue) * 100, 1)
+                                            : 0;
+                                    $mpAdspendRatio =
+                                        $mp->total_revenue > 0
+                                            ? round(($mp->total_adspend / $mp->total_revenue) * 100, 2)
+                                            : 0;
+                                    $mpShare =
+                                        $totalAdspend > 0 ? round(($mp->total_adspend / $totalAdspend) * 100, 1) : 0;
+                                    $roasClr =
+                                        $mpRoas >= 4 ? 'var(--green)' : ($mpRoas >= 2 ? 'var(--yellow)' : 'var(--red)');
+                                @endphp
+                                <div class="col-md-6">
+                                    <div
+                                        style="background:#FAFFFE;border:1px solid var(--border);border-radius:10px;padding:14px 18px;border-left:4px solid {{ $mp->marketplace_color }};">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <div style="font-size:12px;font-weight:600;color:#333;">
+                                                    <span
+                                                        style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ $mp->marketplace_color }};margin-right:8px;"></span>
+                                                    {{ $mp->marketplace_name }}
+                                                </div>
+                                                <div style="font-size:11px;color:#888;margin-top:2px;">
+                                                    {{ $mpShare }}% dari total ad spend
+                                                </div>
+                                            </div>
+                                            <div style="text-align:right;">
+                                                <div style="font-size:16px;font-weight:700;color:var(--clr-magenta);">
+                                                    Rp {{ number_format($mp->total_adspend, 0, ',', '.') }}
+                                                </div>
+                                                <div style="font-size:11px;color:#888;">
+                                                    {{ $mpAdspendRatio }}% dari revenue
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex gap-3 mt-2"
+                                            style="border-top:1px solid var(--border);padding-top:8px;">
+                                            <div>
+                                                <div style="font-size:10px;color:#888;">ROAS</div>
+                                                <div style="font-size:18px;font-weight:800;color:{{ $roasClr }};">
+                                                    {{ $mpRoas }}×
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div style="font-size:10px;color:#888;">Margin</div>
+                                                <div
+                                                    style="font-size:16px;font-weight:700;color:{{ $mpMargin >= 20 ? 'var(--green)' : ($mpMargin >= 10 ? 'var(--yellow)' : 'var(--red)') }};">
+                                                    {{ $mpMargin }}%
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div style="font-size:10px;color:#888;">Revenue</div>
+                                                <div style="font-size:14px;font-weight:600;color:var(--clr-teal);">
+                                                    Rp {{ number_format($mp->total_revenue / 1000000, 1, ',', '.') }}jt
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div style="font-size:10px;color:#888;">Orders</div>
+                                                <div style="font-size:14px;font-weight:600;color:#333;">
+                                                    {{ number_format($mp->total_orders, 0, ',', '.') }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- ================================================================ --}}
+    {{-- 🔥 TREN HARIAN + DONUT CHART --}}
+    {{-- ================================================================ --}}
     <div class="row g-3 mb-4">
         <div class="col-xl-8">
             <div class="card-light h-100">
@@ -157,7 +389,8 @@
             <div class="card-light h-100">
                 <div class="card-header-light">
                     <h3 class="card-title-light"><i class="bi bi-pie-chart me-2"></i>Kontribusi Platform</h3>
-                    <select id="donutMetric" class="form-select-light" style="width:auto;font-size:11px;padding:4px 8px;">
+                    <select id="donutMetric" class="form-select-light"
+                        style="width:auto;font-size:11px;padding:4px 8px;">
                         <option value="revenue">Terhadap Revenue</option>
                         <option value="orders">Terhadap Order</option>
                         <option value="adspend">Terhadap Ad Spend</option>
@@ -171,7 +404,7 @@
                             style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;text-align:center;padding:20px;">
                             <div id="donutCenterLabel" style="font-size:10px;color:#888;">Total Revenue</div>
                             <div id="donutCenterValue" style="font-size:13px;font-weight:700;color:var(--clr-teal);">
-                                Rp {{ number_format($totalRevenue / 1000000, 1, ',', '.') }}jt
+                                Rp {{ number_format($revenueAll / 1000000, 1, ',', '.') }}jt
                             </div>
                         </div>
                     </div>
@@ -188,7 +421,7 @@
                                 <div>
                                     <span class="donut-pct" data-slug="{{ $mp->marketplace_slug }}"
                                         style="font-size:13px;font-weight:700;color:var(--clr-teal);">
-                                        {{ $totalRevenue > 0 ? round(($mp->total_revenue / $totalRevenue) * 100, 1) : 0 }}%
+                                        {{ $revenueAll > 0 ? round(($mp->total_revenue / $revenueAll) * 100, 1) : 0 }}%
                                     </span>
                                     <span class="donut-pct-label"
                                         style="font-size:11px;color:#888;margin-left:3px;">Revenue</span>
@@ -201,15 +434,20 @@
         </div>
     </div>
 
-    {{-- Marketplace Cards (dengan ROAS) --}}
+    {{-- ================================================================ --}}
+    {{-- 🔥 MARKETPLACE CARDS --}}
+    {{-- ================================================================ --}}
     <div class="row g-3 mb-4">
         @foreach ($marketplaceSummary as $mp)
             @php
                 $mpRoas = $mp->total_adspend > 0 ? round($mp->total_revenue / $mp->total_adspend, 2) : 0;
                 $mpMargin = $mp->total_revenue > 0 ? round(($mp->total_profit / $mp->total_revenue) * 100, 1) : 0;
                 $mpShare = $totalOrders > 0 ? round(($mp->total_orders / $totalOrders) * 100, 1) : 0;
+                $mpAdspendRatio =
+                    $mp->total_revenue > 0 ? round(($mp->total_adspend / $mp->total_revenue) * 100, 2) : 0;
                 $roasClr = $mpRoas >= 4 ? 'var(--green)' : ($mpRoas >= 2 ? 'var(--yellow)' : 'var(--red)');
                 $roasLbl = $mpRoas >= 4 ? 'Efisien ✓' : ($mpRoas >= 2 ? 'Cukup' : 'Perlu Review');
+                $marginClr = $mpMargin >= 25 ? 'var(--green)' : ($mpMargin >= 15 ? 'var(--yellow)' : 'var(--red)');
             @endphp
             <div class="col-md-6">
                 <div class="card-light">
@@ -232,7 +470,7 @@
                                 <div class="mp-stat-value">Rp {{ number_format($mp->total_revenue, 0, ',', '.') }}</div>
                                 <div class="progress-light mt-2">
                                     <div class="progress-bar"
-                                        style="width:{{ $totalRevenue > 0 ? round(($mp->total_revenue / $totalRevenue) * 100) : 0 }}%;background:{{ $mp->marketplace_color }};border-radius:4px;height:6px;">
+                                        style="width:{{ $revenueAll > 0 ? round(($mp->total_revenue / $revenueAll) * 100) : 0 }}%;background:{{ $mp->marketplace_color }};border-radius:4px;height:6px;">
                                     </div>
                                 </div>
                             </div>
@@ -240,7 +478,11 @@
                                 <div class="mp-stat-label">Profit</div>
                                 <div class="mp-stat-value" style="color:var(--green);">Rp
                                     {{ number_format($mp->total_profit, 0, ',', '.') }}</div>
-                                <div style="font-size:11px;color:#888;margin-top:4px;">Margin {{ $mpMargin }}%</div>
+                                <div style="font-size:11px;color:{{ $marginClr }};margin-top:4px;">
+                                    Margin <strong>{{ $mpMargin }}%</strong>
+                                    <span style="color:#888;">|</span>
+                                    Ad Spend {{ $mpAdspendRatio }}%
+                                </div>
                             </div>
                             <div class="col-4">
                                 <div class="mp-stat-label">Ad Spend</div>
@@ -266,7 +508,9 @@
         @endforeach
     </div>
 
-    {{-- Grafik Bulanan + Top 5 --}}
+    {{-- ================================================================ --}}
+    {{-- 🔥 GRAFIK BULANAN + TOP 5 --}}
+    {{-- ================================================================ --}}
     <div class="row g-3 mb-4">
         <div class="col-xl-7">
             <div class="card-light h-100">
@@ -298,9 +542,11 @@
                     @forelse($top5Products as $i => $p)
                         @php
                             $rc = ['#008B8B', '#46B8A7', '#C61C8C', '#d97706', '#16a34a'];
-                            $pShare = $totalRevenue > 0 ? round(($p->total_revenue / $totalRevenue) * 100, 1) : 0;
+                            $pShare = $revenueAll > 0 ? round(($p->total_revenue / $revenueAll) * 100, 1) : 0;
                             $pMargin =
                                 $p->total_revenue > 0 ? round(($p->total_profit / $p->total_revenue) * 100, 1) : 0;
+                            $pAdspend = (float) ($p->total_adspend ?? 0);
+                            $pRoas = $pAdspend > 0 ? round($p->total_revenue / $pAdspend, 2) : 0;
                         @endphp
                         <div style="padding:11px 16px;border-bottom:1px solid var(--border);">
                             <div class="d-flex align-items-start gap-3">
@@ -319,6 +565,10 @@
                                         <span style="font-size:12px;font-weight:700;color:var(--green);">Rp
                                             {{ number_format($p->total_revenue, 0, ',', '.') }}</span>
                                         <span style="font-size:10px;color:#888;">Margin {{ $pMargin }}%</span>
+                                        @if ($pAdspend > 0)
+                                            <span style="font-size:10px;color:var(--clr-magenta);">ROAS
+                                                {{ $pRoas }}×</span>
+                                        @endif
                                         <span
                                             style="font-size:10px;background:var(--accent-soft);color:var(--clr-teal);padding:2px 6px;border-radius:10px;">{{ $pShare }}%</span>
                                     </div>
@@ -338,71 +588,169 @@
         </div>
     </div>
 
-    {{-- Tabel Ringkasan Bulanan --}}
+    {{-- ================================================================ --}}
+    {{-- 🔥 TABEL RINGKASAN BULANAN --}}
+    {{-- ================================================================ --}}
     @if ($monthlyStats->count() > 1)
         <div class="row g-3 mb-4">
             <div class="col-12">
                 <div class="card-light">
                     <div class="card-header-light">
                         <h3 class="card-title-light"><i class="bi bi-table me-2"></i>Ringkasan per Bulan</h3>
+                        <span style="font-size:11px;color:#888;">Revenue, Ad Spend per Platform, Profit, Margin,
+                            ROAS</span>
                     </div>
                     <div style="overflow-x:auto;">
                         <table class="table-custom">
                             <thead>
                                 <tr>
-                                    <th>Bulan</th>
-                                    <th class="text-end">Revenue</th>
-                                    <th class="text-end">Ad Spend</th>
-                                    <th class="text-end">Profit</th>
-                                    <th class="text-end">Margin</th>
-                                    <th class="text-end">ROAS</th>
-                                    <th class="text-end">Orders</th>
-                                    <th class="text-end">Growth</th>
+                                    <th style="min-width:100px;">Bulan</th>
+                                    <th class="text-end" style="min-width:130px;">Revenue</th>
+                                    <th class="text-end" style="min-width:100px;color:var(--clr-magenta);">Ad Spend Total
+                                    </th>
+                                    <th class="text-end" style="min-width:100px;color:#EE4D2D;">Ad Spend Shopee</th>
+                                    <th class="text-end" style="min-width:100px;color:#46B8A7;">Ad Spend TikTok</th>
+                                    <th class="text-end" style="min-width:90px;">Ad %</th>
+                                    <th class="text-end" style="min-width:130px;color:var(--green);">Profit (Net)</th>
+                                    <th class="text-end" style="min-width:90px;">Margin (Net)</th>
+                                    <th class="text-end" style="min-width:80px;">ROAS</th>
+                                    <th class="text-end" style="min-width:80px;">Orders</th>
+                                    <th class="text-end" style="min-width:90px;">Growth</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach ($monthlyStats->sortByDesc('period_month') as $i => $ms)
                                     @php
+                                        $periodMonth = $ms->period_month;
+
+                                        $shopeeData = $marketplaceMonthData
+                                            ->filter(function ($item) use ($periodMonth) {
+                                                return $item->period_month == $periodMonth &&
+                                                    $item->marketplace_slug == 'shopee';
+                                            })
+                                            ->first();
+
+                                        $tiktokData = $marketplaceMonthData
+                                            ->filter(function ($item) use ($periodMonth) {
+                                                return $item->period_month == $periodMonth &&
+                                                    $item->marketplace_slug == 'tiktok';
+                                            })
+                                            ->first();
+
+                                        $shopeeAdspend = $shopeeData ? (float) ($shopeeData->total_adspend ?? 0) : 0;
+                                        $tiktokAdspend = $tiktokData ? (float) ($tiktokData->total_adspend ?? 0) : 0;
+                                        $totalAdspend = $shopeeAdspend + $tiktokAdspend;
+
+                                        $totalRevenue = (float) ($ms->total_revenue ?? 0);
+                                        $totalProfit = (float) ($ms->total_profit ?? 0);
+                                        $totalOrders = (int) ($ms->total_orders ?? 0);
+
+                                        $netMargin =
+                                            $totalRevenue > 0 ? round(($totalProfit / $totalRevenue) * 100, 2) : 0;
+                                        $adspendRatio =
+                                            $totalRevenue > 0 ? round(($totalAdspend / $totalRevenue) * 100, 2) : 0;
+                                        $roas = $totalAdspend > 0 ? round($totalRevenue / $totalAdspend, 2) : 0;
+
+                                        $shopeeRoas =
+                                            $shopeeAdspend > 0
+                                                ? round(($shopeeData->total_revenue ?? 0) / $shopeeAdspend, 2)
+                                                : 0;
+                                        $tiktokRoas =
+                                            $tiktokAdspend > 0
+                                                ? round(($tiktokData->total_revenue ?? 0) / $tiktokAdspend, 2)
+                                                : 0;
+
                                         $msPrev = $monthlyStats->sortByDesc('period_month')->get($i + 1);
                                         $msGrowth =
                                             $msPrev && $msPrev->total_revenue > 0
                                                 ? round(
-                                                    (($ms->total_revenue - $msPrev->total_revenue) /
+                                                    (($totalRevenue - $msPrev->total_revenue) /
                                                         $msPrev->total_revenue) *
                                                         100,
                                                     1,
                                                 )
                                                 : null;
-                                        $msRoas =
-                                            $ms->total_adspend > 0
-                                                ? round($ms->total_revenue / $ms->total_adspend, 2)
-                                                : 0;
-                                        $msMargin =
-                                            $ms->total_revenue > 0
-                                                ? round(($ms->total_profit / $ms->total_revenue) * 100, 1)
-                                                : 0;
+
+                                        $marginColor =
+                                            $netMargin >= 25
+                                                ? 'var(--green)'
+                                                : ($netMargin >= 15
+                                                    ? 'var(--yellow)'
+                                                    : ($netMargin >= 5
+                                                        ? '#d97706'
+                                                        : 'var(--red)'));
+                                        $roasColor =
+                                            $roas >= 5
+                                                ? 'var(--green)'
+                                                : ($roas >= 3
+                                                    ? 'var(--yellow)'
+                                                    : ($roas >= 1.5
+                                                        ? '#d97706'
+                                                        : 'var(--red)'));
                                     @endphp
                                     <tr>
-                                        <td><strong
-                                                style="color:var(--clr-teal);">{{ \Carbon\Carbon::createFromFormat('Y-m', $ms->period_month)->isoFormat('MMMM YYYY') }}</strong>
+                                        <td>
+                                            <strong style="color:var(--clr-teal);">
+                                                {{ \Carbon\Carbon::createFromFormat('Y-m', $periodMonth)->isoFormat('MMMM YYYY') }}
+                                            </strong>
+                                            <div style="font-size:9px;color:#aaa;margin-top:2px;">
+                                                {{ $totalOrders }} orders
+                                            </div>
                                         </td>
-                                        <td class="text-end">Rp {{ number_format($ms->total_revenue, 0, ',', '.') }}</td>
-                                        <td class="text-end" style="color:var(--clr-magenta);">Rp
-                                            {{ number_format($ms->total_adspend, 0, ',', '.') }}</td>
-                                        <td class="text-end" style="color:var(--green);">Rp
-                                            {{ number_format($ms->total_profit, 0, ',', '.') }}</td>
-                                        <td class="text-end"><span
-                                                style="color:{{ $msMargin >= 20 ? 'var(--green)' : ($msMargin >= 10 ? 'var(--yellow)' : 'var(--red)') }}">{{ $msMargin }}%</span>
+                                        <td class="text-end" style="font-weight:700;color:var(--clr-teal);">
+                                            Rp {{ number_format($totalRevenue, 0, ',', '.') }}
                                         </td>
-                                        <td class="text-end"><span
-                                                style="color:{{ $msRoas >= 4 ? 'var(--green)' : ($msRoas >= 2 ? 'var(--yellow)' : 'var(--red)') }};font-weight:700;">{{ $msRoas }}×</span>
+                                        <td class="text-end" style="font-weight:700;color:var(--clr-magenta);">
+                                            Rp {{ number_format($totalAdspend, 0, ',', '.') }}
                                         </td>
-                                        <td class="text-end">{{ number_format($ms->total_orders, 0, ',', '.') }}</td>
+                                        <td class="text-end" style="color:#EE4D2D;">
+                                            Rp {{ number_format($shopeeAdspend, 0, ',', '.') }}
+                                            @if ($shopeeRoas > 0)
+                                                <div style="font-size:9px;color:#888;">ROAS {{ $shopeeRoas }}×</div>
+                                            @endif
+                                        </td>
+                                        <td class="text-end" style="color:#46B8A7;">
+                                            Rp {{ number_format($tiktokAdspend, 0, ',', '.') }}
+                                            @if ($tiktokRoas > 0)
+                                                <div style="font-size:9px;color:#888;">ROAS {{ $tiktokRoas }}×</div>
+                                            @endif
+                                        </td>
+                                        <td class="text-end" style="color:#888;">
+                                            {{ $adspendRatio }}%
+                                        </td>
+                                        <td class="text-end" style="font-weight:600;color:var(--green);">
+                                            Rp {{ number_format($totalProfit, 0, ',', '.') }}
+                                        </td>
+                                        <td class="text-end">
+                                            <span style="font-weight:700;color:{{ $marginColor }};">
+                                                {{ $netMargin }}%
+                                            </span>
+                                            <div style="font-size:9px;color:#888;margin-top:2px;">
+                                                Net Profit Margin
+                                            </div>
+                                        </td>
+                                        <td class="text-end">
+                                            <span style="font-weight:700;color:{{ $roasColor }};">
+                                                {{ $roas }}×
+                                            </span>
+                                            <div style="font-size:9px;color:#888;margin-top:2px;">
+                                                @if ($roas >= 4)
+                                                    Efisien
+                                                @elseif($roas >= 2)
+                                                    Cukup
+                                                @else
+                                                    🔴 Perlu Review
+                                                @endif
+                                            </div>
+                                        </td>
+                                        <td class="text-end" style="font-weight:600;color:var(--clr-teal);">
+                                            {{ number_format($totalOrders, 0, ',', '.') }}
+                                        </td>
                                         <td class="text-end">
                                             @if ($msGrowth !== null)
                                                 <span class="{{ $msGrowth >= 0 ? 'badge-up' : 'badge-down' }}">
-                                                    <i
-                                                        class="bi bi-arrow-{{ $msGrowth >= 0 ? 'up' : 'down' }}"></i>{{ abs($msGrowth) }}%
+                                                    <i class="bi bi-arrow-{{ $msGrowth >= 0 ? 'up' : 'down' }}"></i>
+                                                    {{ abs($msGrowth) }}%
                                                 </span>
                                             @else
                                                 <span style="color:#ccc;">—</span>
@@ -418,7 +766,9 @@
         </div>
     @endif
 
-    {{-- Insights --}}
+    {{-- ================================================================ --}}
+    {{-- 🔥 INSIGHTS --}}
+    {{-- ================================================================ --}}
     <div class="row g-3">
         <div class="col-12">
             <div class="card-light">
@@ -466,10 +816,10 @@
         const dailyTrend = @json($dailyTrend);
         const mpSummary = @json($marketplaceSummary);
         const mpMonthRaw = @json($marketplaceMonthData);
-        const totRevenue = {{ $totalRevenue }};
+        const totRevenue = {{ $revenueAll }};
         const totOrders = {{ $totalOrders }};
         const totAdspend = {{ $totalAdspend }};
-        const totProfit = {{ $totalProfit }};
+        const totProfit = {{ $profitAll }};
 
         function fmtRp(v) {
             return 'Rp ' + Math.round(v).toLocaleString('id-ID');
@@ -484,7 +834,9 @@
             return ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'][+m] + ' ' + y;
         }
 
-        // CHART 1: Tren harian — garis terpisah, fill:false
+        // ============================================================
+        // CHART 1: Tren Harian
+        // ============================================================
         (() => {
             const platforms = [...new Set(dailyTrend.map(d => d.marketplace_name))];
             const allDates = [...new Set(dailyTrend.map(d => d.transaction_date))].sort();
@@ -493,7 +845,6 @@
                 tiktok: '#46B8A7'
             };
 
-            // Clean dates for display - remove T00:00:00
             const cleanDates = allDates.map(d => {
                 if (d && d.includes('T')) {
                     return d.split('T')[0].slice(5);
@@ -579,34 +930,44 @@
             });
         })();
 
-        // CHART 2: Donut dengan switch metrik
+        // ============================================================
+        // CHART 2: Donut Chart - KONSISTEN 100%
+        // ============================================================
         let donutChart;
+
+        // 🔥 HITUNG TOTAL DARI mpSummary UNTUK KONSISTENSI
+        const revenueTotal = mpSummary.reduce((sum, m) => sum + (parseFloat(m.total_revenue) || 0), 0);
+        const ordersTotal = mpSummary.reduce((sum, m) => sum + (parseInt(m.total_orders) || 0), 0);
+        const adspendTotal = mpSummary.reduce((sum, m) => sum + (parseFloat(m.total_adspend) || 0), 0);
+        const profitTotal = mpSummary.reduce((sum, m) => sum + (parseFloat(m.total_profit) || 0), 0);
+
         const donutMap = {
             revenue: {
-                values: mpSummary.map(m => m.total_revenue),
+                values: mpSummary.map(m => parseFloat(m.total_revenue) || 0),
                 label: 'Revenue',
-                total: totRevenue,
+                total: revenueTotal,
                 fmt: fmtRp
             },
             orders: {
-                values: mpSummary.map(m => m.total_orders),
+                values: mpSummary.map(m => parseInt(m.total_orders) || 0),
                 label: 'Orders',
-                total: totOrders,
-                fmt: v => Math.round(v) + ' order'
+                total: ordersTotal,
+                fmt: v => Math.round(v).toLocaleString('id-ID') + ' order'
             },
             adspend: {
-                values: mpSummary.map(m => m.total_adspend),
+                values: mpSummary.map(m => parseFloat(m.total_adspend) || 0),
                 label: 'Ad Spend',
-                total: totAdspend,
+                total: adspendTotal,
                 fmt: fmtRp
             },
             profit: {
-                values: mpSummary.map(m => m.total_profit),
+                values: mpSummary.map(m => parseFloat(m.total_profit) || 0),
                 label: 'Profit',
-                total: totProfit,
+                total: profitTotal,
                 fmt: fmtRp
             },
         };
+
         const MP_COLORS = {
             shopee: '#EE4D2D',
             tiktok: '#46B8A7'
@@ -614,18 +975,27 @@
 
         function buildDonut(metric) {
             const d = donutMap[metric];
+            if (!d || d.total === 0) {
+                if (donutChart) donutChart.destroy();
+                document.getElementById('donutCenterValue').textContent = 'Tidak ada data';
+                return;
+            }
+
             if (donutChart) donutChart.destroy();
+
+            const chartData = {
+                labels: mpSummary.map(m => m.marketplace_name),
+                datasets: [{
+                    data: d.values,
+                    backgroundColor: mpSummary.map(m => MP_COLORS[m.marketplace_slug] || '#008B8B'),
+                    borderWidth: 0,
+                    hoverOffset: 8
+                }]
+            };
+
             donutChart = new Chart(document.getElementById('donutChart'), {
                 type: 'doughnut',
-                data: {
-                    labels: mpSummary.map(m => m.marketplace_name),
-                    datasets: [{
-                        data: d.values,
-                        backgroundColor: mpSummary.map(m => MP_COLORS[m.marketplace_slug] || '#008B8B'),
-                        borderWidth: 0,
-                        hoverOffset: 8
-                    }]
-                },
+                data: chartData,
                 options: {
                     cutout: '70%',
                     plugins: {
@@ -634,8 +1004,11 @@
                         },
                         tooltip: {
                             callbacks: {
-                                label: ctx =>
-                                    ` ${ctx.label}: ${d.fmt(ctx.raw)} (${d.total>0?((ctx.raw/d.total)*100).toFixed(1):0}%)`
+                                label: function(ctx) {
+                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0;
+                                    return ` ${ctx.label}: ${d.fmt(ctx.raw)} (${pct}%)`;
+                                }
                             }
                         }
                     }
@@ -645,21 +1018,28 @@
             document.getElementById('donutCenterLabel').textContent = 'Total ' + d.label;
             const tv = d.total;
             document.getElementById('donutCenterValue').textContent =
-                metric === 'orders' ? tv + ' order' : 'Rp ' + (tv / 1000000).toFixed(1) + 'jt';
+                metric === 'orders' ? tv.toLocaleString('id-ID') + ' order' :
+                'Rp ' + (tv / 1000000).toFixed(1) + 'jt';
 
+            // Update persentase di list
             document.querySelectorAll('.donut-pct').forEach(el => {
                 const mp = mpSummary.find(m => m.marketplace_slug === el.dataset.slug);
                 if (!mp) return;
                 const idx = mpSummary.indexOf(mp);
-                const pct = d.total > 0 ? ((d.values[idx] / d.total) * 100).toFixed(1) : '0';
+                const val = d.values[idx] || 0;
+                const pct = d.total > 0 ? ((val / d.total) * 100).toFixed(1) : '0';
                 el.textContent = pct + '%';
-                el.nextElementSibling.textContent = d.label;
+                const labelEl = el.nextElementSibling;
+                if (labelEl) labelEl.textContent = d.label;
             });
         }
+
         buildDonut('revenue');
         document.getElementById('donutMetric').addEventListener('change', e => buildDonut(e.target.value));
 
-        // CHART 3: Grouped bar platform × bulan
+        // ============================================================
+        // CHART 3: Grouped Bar Bulanan
+        // ============================================================
         let mpMonthChart;
         const mpMetricMap = {
             revenue: {
@@ -676,7 +1056,7 @@
             },
             orders: {
                 key: 'total_orders',
-                fmt: v => Math.round(v) + ' order'
+                fmt: v => Math.round(v).toLocaleString('id-ID') + ' order'
             },
         };
 
@@ -753,7 +1133,9 @@
         buildMpMonth('revenue');
         document.getElementById('mpMonthMetric').addEventListener('change', e => buildMpMonth(e.target.value));
 
-        // Period filter dropdown
+        // ============================================================
+        // PERIOD FILTER DROPDOWN
+        // ============================================================
         const btn = document.getElementById('periodFilterBtn');
         const dropdown = document.getElementById('periodDropdown');
         const checkAll = document.getElementById('checkAll');

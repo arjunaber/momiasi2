@@ -57,25 +57,25 @@
 
 @php
     // ============================================================
-    // 🔥 METRIK UTAMA - SEMUA DARI CONTROLLER
+    // METRIK UTAMA - SEMUA DARI CONTROLLER
     // ============================================================
 
-    // 💰 REVENUE - DUA VERSI
+    // REVENUE - DUA VERSI
     $revenueAll = $totalRevenueAll ?? 0;
     $revenueCompleted = $totalRevenueCompleted ?? 0;
 
-    // 💵 PROFIT - DUA VERSI
+    // PROFIT - DUA VERSI
     $profitAll = $totalProfitAll ?? 0;
     $profitCompleted = $totalProfitCompleted ?? 0;
 
-    // 📦 ORDERS
+    // ORDERS
     $totalOrders = $totalOrdersAll ?? 0;
     $ordersCompleted = $totalOrdersCompleted ?? 0;
 
-    // 📢 ADS
+    // ADS
     $totalAdspend = $totalAdspend ?? 0;
 
-    // 📊 METRIK TURUNAN
+    // METRIK TURUNAN
     $profitMargin = $revenueCompleted > 0 ? round(($profitCompleted / $revenueCompleted) * 100, 1) : 0;
 
     $roasVal = $totalAdspend > 0 ? round($revenueAll / $totalAdspend, 2) : 0;
@@ -161,7 +161,7 @@
                 <div class="stat-value" style="font-size:18px;">Rp
                     {{ number_format($revenueAll / 1000000, 1, ',', '.') }}jt</div>
                 <div class="stat-sub mt-1" style="font-size:10px;color:#888;">
-                    📊 Termasuk batal, retur, pending
+                    Termasuk batal, retur, pending
                     <span style="display:block;font-size:9px;color:#aaa;">
                         {{ $completionRate }}% completion rate
                     </span>

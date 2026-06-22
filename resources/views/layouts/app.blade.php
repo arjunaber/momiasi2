@@ -74,49 +74,65 @@
             flex-direction: column;
             z-index: 100;
             overflow-y: auto;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        /* ── OPSI 1: Kotak Putih Khusus Logo ── */
+        .sidebar-brand-wrapper {
+            padding: 16px;
+            background: var(--bg-sidebar);
+            flex-shrink: 0;
         }
 
         .sidebar-brand {
-            padding: 20px 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .brand-logo-wrap {
-            width: 42px;
-            height: 42px;
             background: white;
-            border-radius: 10px;
+            border-radius: 16px;
+            padding: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-shrink: 0;
-            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            min-height: 120px;
+        }
+
+        .brand-logo-wrap {
+            width: 100%;
+            max-width: 160px;
+            height: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .brand-logo-wrap img {
             width: 100%;
-            height: 100%;
+            height: auto;
+            max-height: 100px;
             object-fit: contain;
+            display: block;
+            transition: transform 0.3s ease;
         }
 
-        .brand-logo-text .logo-main {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 16px;
+        .brand-logo-wrap img:hover {
+            transform: scale(1.05);
+        }
+
+        .brand-logo-wrap .logo-fallback {
+            display: none;
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #46B8A7, #008B8B);
+            border-radius: 50%;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
             font-weight: 800;
             color: white;
-            line-height: 1.1;
+            font-family: 'Plus Jakarta Sans', sans-serif;
         }
 
-        .brand-logo-text .logo-sub {
-            font-size: 10px;
-            color: rgba(255, 255, 255, 0.7);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
+        /* ── Sidebar Navigation ── */
         .sidebar-nav {
             padding: 12px 10px;
             flex: 1;
@@ -173,6 +189,7 @@
             color: var(--clr-teal);
         }
 
+        /* ── Sidebar Footer ── */
         .sidebar-footer {
             padding: 12px;
             border-top: 1px solid rgba(255, 255, 255, 0.15);
@@ -213,7 +230,7 @@
             text-transform: capitalize;
         }
 
-        /* ── Main ── */
+        /* ── Main Content ── */
         .main-content {
             margin-left: var(--sidebar-w);
             min-height: 100vh;
@@ -690,10 +707,11 @@
             }
         }
 
+        /* ── Responsive ── */
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
-                transition: transform 0.3s;
+                width: 280px;
             }
 
             .sidebar.open {
@@ -703,6 +721,34 @@
             .main-content {
                 margin-left: 0;
             }
+
+            .sidebar-brand {
+                min-height: 100px;
+                padding: 12px;
+            }
+
+            .brand-logo-wrap {
+                max-width: 130px;
+            }
+
+            .brand-logo-wrap img {
+                max-height: 80px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .sidebar-brand {
+                min-height: 80px;
+                padding: 10px;
+            }
+
+            .brand-logo-wrap {
+                max-width: 100px;
+            }
+
+            .brand-logo-wrap img {
+                max-height: 60px;
+            }
         }
     </style>
     @stack('styles')
@@ -710,20 +756,15 @@
 
 <body>
 
-    <!-- Sidebar -->
+    <!-- Sidebar OPSI 1: Kotak Putih Khusus Logo -->
     <div class="sidebar" id="sidebar">
-        <div class="sidebar-brand">
-            <div class="brand-logo-wrap">
-                {{-- Ganti src dengan path logo kamu --}}
-                <img src="{{ asset('images/logo.png') }}" alt="Momiasi"
-                    onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-                <div
-                    style="display:none;width:100%;height:100%;background:white;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--clr-teal);">
-                    M</div>
-            </div>
-            <div class="brand-logo-text">
-                <div class="logo-main">Momiasi</div>
-                <div class="logo-sub">ERP Dashboard</div>
+        <div class="sidebar-brand-wrapper">
+            <div class="sidebar-brand">
+                <div class="brand-logo-wrap">
+                    <img src="{{ asset('images/logo.png') }}" alt="Momiasi Logo"
+                        onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                    <div class="logo-fallback">M</div>
+                </div>
             </div>
         </div>
 
@@ -771,7 +812,7 @@
         </div>
     </div>
 
-    <!-- Main -->
+    <!-- Main Content -->
     <div class="main-content">
         <div class="topbar">
             <div>
